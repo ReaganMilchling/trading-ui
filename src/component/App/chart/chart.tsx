@@ -10,8 +10,8 @@ import {
   Legend,
 } from 'chart.js';
 import { Line } from 'react-chartjs-2';
-import { Box } from '@mui/material';
-import Ticker from './Ticker';
+import { Box, MenuItem, Select, SelectChangeEvent } from '@mui/material';
+import Ticker from '../Ticker';
 
 ChartJS.register(
   CategoryScale,
@@ -24,23 +24,34 @@ ChartJS.register(
 );
 
 export default function App() {
-  const [allData, setAllData] = useState<Ticker[]>([]);
+  const [tickers, setTickers] = useState<string[]>([]);
+  const [selectedTicker, setSelectedTicker] = useState<string>("SPY");
+  const [selectedDate, setSelectedDate] = useState<string>("2023-07-01");
+
   const [chartLabels, setChartLabels] = useState<String[]>([]);
   const [chartData, setChartData] = useState<String[]>([]);
   const [chartDataHigh, setChartDataHigh] = useState<String[]>([]);
   const [chartDataLow, setChartDataLow] = useState<String[]>([]);
 
-  useEffect(() => {
-    fetch('/ticker/SPY/from/2020-01-01')
+  const getValues = () => {
+    fetch('/time-series/' + selectedTicker + '/from/' + selectedDate)
       .then(response => response.json())
       .then(data => {
-        setAllData(data);
-        setChartData(data.map((res: Ticker) => { return res.close}));
-        setChartDataHigh(data.map((res: Ticker) => { return res.high}));
-        setChartDataLow(data.map((res: Ticker) => { return res.low}));
-        setChartLabels(data.map((res: Ticker) => { return res.timestamp.slice(0,10)}));
+        setChartData(data.close);
+        setChartDataHigh(data.high);
+        setChartDataLow(data.low);
+        setChartLabels(data.timestamp);
       }
     )
+  }
+
+  useEffect(() => {
+    fetch('/ticker/list')
+      .then(data => data.json())
+      .then(data => {
+          setTickers(data)
+    });
+    getValues();
   }, []);
   
   const options = {
@@ -51,7 +62,7 @@ export default function App() {
       },
       title: {
         display: true,
-        text: 'SPY',
+        text: selectedTicker + " since " + selectedDate,
       },
     },
     
@@ -81,9 +92,28 @@ export default function App() {
     ]
   }
 
+  const handleTickerChange = (event: SelectChangeEvent) => {
+    console.log(selectedTicker);
+    setSelectedTicker(event.target.value as string);
+    console.log(selectedTicker);
+  };
+
   return (
     <Box>
-      <Line options={options} data={data} />
+      <Select
+        labelId="demo-simple-select-label"
+        id="demo-simple-select"
+        value={selectedTicker}
+        label="Ticker"
+        onChange={handleTickerChange}
+      >
+        {tickers.map((ticker: string) => {
+          return <MenuItem value={ticker}>{ticker}</MenuItem>
+        })}
+      </Select>
+      <Box>
+        <Line options={options} data={data} />
+      </Box>
     </Box>
   );
 }
